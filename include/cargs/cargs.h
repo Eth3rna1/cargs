@@ -11,51 +11,29 @@ typedef enum ArgType {
 } ArgType;
 
 typedef struct ArgDef {
-    const char* name;
+    name_t name;
     ArgType type;
     bool optional;
 } ArgDef;
 
-typedef struct CArgs {
-    ArgDef* args;
-    size_t size;
-} CArgs;
+union Variant {
+    char* s;
+    float f;
+    bool b;
+};
 
-typedef struct StringArg {
+typedef struct Value {
+    ArgType type;
+    union Variant variant;
+} Value;
+
+typedef struct Arg {
     name_t name;
-    char* value;
-} StringArg;
+    Value value;
+} Arg;
 
-typedef struct BooleanArg {
-    name_t name;
-    bool value;
-} BooleanArg;
+ArgDef newArgDef(const char* name, ArgType type, bool optional);
 
-typedef struct NumericalArg {
-    name_t name;
-    float value;
-} NumericalArg;
+Arg newArg(name_t name, char* v, ArgType type);
 
-typedef struct StringArgCollection {
-    StringArg* args;
-    size_t size;
-} StringArgCollection;
-
-typedef struct BooleanArgCollection {
-    BooleanArg* args;
-    size_t size;
-} BooleanArgCollection;
-
-typedef struct NumericalArgCollection {
-    NumericalArg* args;
-    size_t size;
-} NumericalArgCollection;
-
-typedef struct CArgsResult {
-    StringArg* stringArgs;
-    BooleanArg* booleanArgs;
-    NumericalArg* numericalArgs;
-} CArgsResult;
-
-
-ArgDef newArg(const char* name, ArgType type, bool optional);
+Arg* parse(char** argv, int argc, ArgDef* definitions, size_t size);
