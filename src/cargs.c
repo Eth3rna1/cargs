@@ -132,11 +132,10 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
 
                 printf("Acquired the arguments value: %s\n", argValue);
 
-                bool isNotAnArgument = getArgDefWithName(argValue, definitions, defsSize) != -1;
-                bool hasPrecedingDecouplingToken = i != 0 && strcmp(argv[i - 1], "--") != 0;
+                bool isAnArgument = getArgDefWithName(argValue, definitions, defsSize) != -1;
+                bool hasNoPrecedingDecouplingToken = i != 0 && strcmp(argv[i - 1], "--") != 0;
 
-                if (isNotAnArgument && hasPrecedingDecouplingToken) {
-                    // means that the taken value is actually a flag
+                if (isAnArgument && hasNoPrecedingDecouplingToken) {
                     fprintf(
                         stderr,
                         "Please provide a valid value for `%s`, not `%s`. If this is what you wanted, preceed the token with `--` as a token\n",
