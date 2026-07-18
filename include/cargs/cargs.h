@@ -34,6 +34,4 @@ typedef struct Arg {
 
 ArgDef newArgDef(const char* name, ArgType type, bool optional);
 
-Arg newArg(name_t name, char* v, ArgType type);
-
 Arg* parse(char** argv, int argc, ArgDef* definitions, size_t size);

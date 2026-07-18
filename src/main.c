@@ -5,6 +5,7 @@ int main(int argc, char** argv) {
     ArgDef definitions[1] = {
         newArgDef("--name", STRING, false)
     };
+
     Arg* args = parse(argv, argc, definitions, 1);
 
     Arg arg = args[0];
