@@ -36,57 +36,29 @@ bool intInInts(int n, int* ints, size_t size) {
     return false;
 }
 
-bool argAlreadyExists(Arg* args, size_t argsS, const Arg* arg) {
-    size_t left = 0;
-    
-    if (argsS == 0) return false;
-
-    size_t right = argsS - 1;
-
-    while (left <= right) {
-        if (strcmp(args[left].name, arg->name) == 0) return true;
-        if (strcmp(args[right].name, arg->name) == 0) return true;
-        left++;
-        right--;
+bool argAlreadyExists(Arg* args, size_t argsSize, const Arg* arg) {
+    for (size_t i = 0; i < argsSize; ++i) {
+        if (strcmp(args[i].name, arg->name) == 0) return true;
     }
 
     return false;
 }
 
 bool isArgDefUsed(const ArgDef* def, const Arg* args, size_t argsSize) {
-    size_t left = 0;
-
-    if (argsSize == 0) return false;
-
-    size_t right = argsSize - 1;
-
-    while (left <= right) {
-        if (strcmp(args[left++].name, def->name) == 0) return true;
-        if (strcmp(args[right--].name, def->name) == 0) return true;
+    for (size_t i = 0; i < argsSize; ++i) {
+        if (strcmp(args[i].name, def->name) == 0) return true;
     }
-
+    
     return false;
 }
 
 Arg parseStringArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
     if (pos + 1 >= argc) {
-        fprintf(stderr, "Please provide a string value to: `%s`\n", arg);
+        fprintf(stderr, "Please provide a string value to: `%s`\n", def->name);
         TERMINATE;
     }
 
     char* argValue = argv[pos + 1];
-
-    bool valueIsAnArgument = getArgDefWithName(argValue, definitions, defsSize) != -1;
-
-    if (valueIsAnArgument) {
-        fprintf(
-            stderr,
-            "Please provide a valid value for `%s`, not `%s`. If this is what you wanted, precede the token with `--` as a token\n",
-            argName,
-            argValue
-        );
-        TERMINATE;
-    }
 
     Arg a = {
         .name = def->name,
@@ -101,7 +73,7 @@ Arg parseStringArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
 
 Arg parseBooleanArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
     Arg a = {
-        .name = argName,
+        .name = def->name,
         .value = {
             .type = BOOLEAN,
             .variant.b = true
@@ -113,7 +85,7 @@ Arg parseBooleanArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
 
 Arg parseNumericalArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
     if (pos + 1 >= argc) {
-        fprintf(stderr, "Please provide a numerical value to: `%s`\n", arg);
+        fprintf(stderr, "Please provide a numerical value to: `%s`\n", def->name);
         TERMINATE;
     }
     char* argValue = argv[pos + 1];
@@ -121,7 +93,6 @@ Arg parseNumericalArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
 
     float floatArgValue = strtof(argValue, &end);
 
-    /*if (end == argValue) {*/
     if (*end != '\0') {
         fprintf(stderr, "Error parsing numerical value: `%s`\n", argValue);
         TERMINATE;
@@ -138,14 +109,13 @@ Arg parseNumericalArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
     return a;
 }
 
-Arg parseDispatch(char** argv, int argc, const ArgDef* definitions, size_t defsSize, size_t pos) {
+Arg parseDispatch(char** argv, int argc, size_t pos, const ArgDef* def) {
     Arg a;
-    ArgDef def = definitions[i];
 
-    switch (def.type) {
-        case STRING: a = parseStringArgDef(argv, argc, definitions, defsSize, def->name, pos); break;
-        case BOOLEAN: a = parseBooleanArgDef(argv, argc, definitions, defsSize, def->name, pos); break;
-        case NUMERICAL: a = parseNumericalArgDef(argv, argc, definitions, defsSize, def->name, pos); break;
+    switch (def->type) {
+        case STRING: a = parseStringArgDef(argv, argc, def, pos); break;
+        case BOOLEAN: a = parseBooleanArgDef(argv, argc, def, pos); break;
+        case NUMERICAL: a = parseNumericalArgDef(argv, argc, def, pos); break;
     }
 
     return a;
@@ -166,8 +136,6 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
     while (i < argc) {
         char* arg = argv[i];
 
-        printf("%s\n", arg);
-
         // looking for its definition
         int idx = getArgDefWithName(arg, definitions, defsSize);
 
@@ -176,11 +144,13 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
             return NULL;
         }
 
-        Arg a = parseDispatch(argv, argc, definitions, defsSize, i);
+        const ArgDef* def = &definitions[idx];
+
+        Arg a = parseDispatch(argv, argc, i, def);
 
         if (!argAlreadyExists(args, argsP, &a)) args[argsP++] = a;
 
-        i += (def.type == BOOLEAN) ? 1 : 2;
+        i += (def->type == BOOLEAN) ? 1 : 2;
     }
 
 

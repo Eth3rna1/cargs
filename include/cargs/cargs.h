@@ -34,6 +34,6 @@ typedef struct Arg {
 
 ArgDef newArgDef(const char* name, ArgType type, bool optional);
 
-Arg parseDispatch(char** argv, int argc, const ArgDef* definitions, size_t defsSize, size_t pos)
+Arg parseDispatch(char** argv, int argc, size_t pos, const ArgDef* def);
 
 Arg* parse(char** argv, int argc, ArgDef* definitions, size_t size);
