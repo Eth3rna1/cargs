@@ -19,7 +19,7 @@ ArgDef newArgDef(const char* name, ArgType type, bool optional) {
     return arg;
 }
 
-size_t getArgDefWithName(const char* arg, const ArgDef* definitions, size_t size) {
+int getArgDefWithName(const char* arg, const ArgDef* definitions, size_t size) {
     for (size_t i = 0; i < size; ++i) {
         ArgDef def = definitions[i];
         
@@ -36,7 +36,7 @@ bool intInInts(int n, int* ints, size_t size) {
     return false;
 }
 
-bool isArgsExist(Arg* args, size_t argsS, const Arg* arg) {
+bool argAlreadyExists(Arg* args, size_t argsS, const Arg* arg) {
     size_t left = 0;
     
     if (argsS == 0) return false;
@@ -68,7 +68,7 @@ bool isArgDefUsed(const ArgDef* def, const Arg* args, size_t argsSize) {
     return false;
 }
 
-Arg parseStringArgDef(char** argv, int argc, const ArgDef* definitions, size_t defsSize, const char* arg, size_t pos) {
+Arg parseStringArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
     if (pos + 1 >= argc) {
         fprintf(stderr, "Please provide a string value to: `%s`\n", arg);
         TERMINATE;
@@ -82,14 +82,14 @@ Arg parseStringArgDef(char** argv, int argc, const ArgDef* definitions, size_t d
         fprintf(
             stderr,
             "Please provide a valid value for `%s`, not `%s`. If this is what you wanted, precede the token with `--` as a token\n",
-            arg,
+            argName,
             argValue
         );
         TERMINATE;
     }
 
     Arg a = {
-        .name = arg,
+        .name = def->name,
         .value = {
             .type = STRING,
             .variant.s = argValue
@@ -99,13 +99,50 @@ Arg parseStringArgDef(char** argv, int argc, const ArgDef* definitions, size_t d
     return a;
 }
 
-Arg parseBooleanArgDef(char** argv, int argc, const ArgDef* definitions, size_t defsSize, const char* arg, size_t pos) {}
-Arg parseNumericalArgDef(char** argv, int argc, const ArgDef* definitions, size_t defsSize, const char* arg, size_t pos) {}
+Arg parseBooleanArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
+    Arg a = {
+        .name = argName,
+        .value = {
+            .type = BOOLEAN,
+            .variant.b = true
+        }
+    };
 
-Arg parseDispatch(char** argv, int argc, const ArgDef* definitions, size_t defsSize, const ArgDef* def, size_t pos) {
+    return a;
+}
+
+Arg parseNumericalArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
+    if (pos + 1 >= argc) {
+        fprintf(stderr, "Please provide a numerical value to: `%s`\n", arg);
+        TERMINATE;
+    }
+    char* argValue = argv[pos + 1];
+    char* end;
+
+    float floatArgValue = strtof(argValue, &end);
+
+    /*if (end == argValue) {*/
+    if (*end != '\0') {
+        fprintf(stderr, "Error parsing numerical value: `%s`\n", argValue);
+        TERMINATE;
+    }
+
+    Arg a = {
+        .name = def->name,
+        .value = {
+            .type = NUMERICAL,
+            .variant.f = floatArgValue
+        }
+    };
+
+    return a;
+}
+
+Arg parseDispatch(char** argv, int argc, const ArgDef* definitions, size_t defsSize, size_t pos) {
     Arg a;
+    ArgDef def = definitions[i];
 
-    switch (def->type) {
+    switch (def.type) {
         case STRING: a = parseStringArgDef(argv, argc, definitions, defsSize, def->name, pos); break;
         case BOOLEAN: a = parseBooleanArgDef(argv, argc, definitions, defsSize, def->name, pos); break;
         case NUMERICAL: a = parseNumericalArgDef(argv, argc, definitions, defsSize, def->name, pos); break;
@@ -129,107 +166,21 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
     while (i < argc) {
         char* arg = argv[i];
 
+        printf("%s\n", arg);
+
         // looking for its definition
-        size_t idx = getArgDefWithName(arg, definitions, defsSize);
+        int idx = getArgDefWithName(arg, definitions, defsSize);
 
         if (idx == -1) {
             fprintf(stderr, "Unexpected argument given: `%s`\n", arg);
             return NULL;
         }
 
-        switch (definitions[idx].type) {
-            case STRING: {
-                if (i + 1 >= argc) {
-                    fprintf(stderr, "Please provide a string value to: `%s`\n", arg);
-                    return NULL;
-                }
-                char* argValue = argv[i + 1];
+        Arg a = parseDispatch(argv, argc, definitions, defsSize, i);
 
-                bool isAnArgument = getArgDefWithName(argValue, definitions, defsSize) != -1;
-                bool hasNoPrecedingDecouplingToken = i != 0 && strcmp(argv[i - 1], "--") != 0;
+        if (!argAlreadyExists(args, argsP, &a)) args[argsP++] = a;
 
-                if (isAnArgument && hasNoPrecedingDecouplingToken) {
-                    fprintf(
-                        stderr,
-                        "Please provide a valid value for `%s`, not `%s`. If this is what you wanted, precede the token with `--` as a token\n",
-                        arg,
-                        argValue
-                    );
-                    return NULL;
-                }
-
-                Arg a = {
-                    .name = arg,
-                    .value = {
-                        .type = STRING,
-                        .variant.s = argValue
-                    }
-                };
-
-                if (!isArgsExist(args, argsP, &a)) {
-                    args[argsP++] = a;
-                }
-
-                i += 2;
-                break;
-            }
-            case BOOLEAN: {
-                Arg a = {
-                    .name = arg,
-                    .value = {
-                        .type = BOOLEAN,
-                        .variant.b = true
-                    }
-                };
-
-                if (!isArgsExist(args, argsP, &a)) {
-                    args[argsP++] = a;
-                }
-
-                i += 1;
-                break;
-            }
-            case NUMERICAL: {
-                if (i + 1 >= argc) {
-                    fprintf(stderr, "Please provide a numerical value to: `%s`\n", arg);
-                    return NULL;
-                }
-                char* argValue = argv[i + 1];
-                char* end;
-
-                float floatArgValue = strtof(argValue, &end);
-                if (end == argValue) {
-                    fprintf(stderr, "Error parsing numerical value: `%f`\n", argValue);
-                    return NULL;
-                }
-
-                if ((getArgDefWithName(argValue, definitions, defsSize) != -1) && (i != 0 && strcmp(argv[i - 1], "--") != 0)) {
-                    // means that the taken value is actually a flag
-                    fprintf(
-                        stderr,
-                        "Please provide a valid value for `%s`, not `%d`. If this is what you wanted, precede the token with `--` as a token\n",
-                        arg,
-                        floatArgValue
-                    );
-                    return NULL;
-                }
-
-                Arg a = {
-                    .name = arg,
-                    .value = {
-                        .type = BOOLEAN,
-                        .variant.s = argValue
-                    }
-                };
-
-                if (!isArgsExist(args, argsP, &a)) {
-                    args[argsP++] = a;
-                }
-
-                i += 2;
-                break;
-            }
-        }
+        i += (def.type == BOOLEAN) ? 1 : 2;
     }
 
 
