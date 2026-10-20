@@ -37,3 +37,5 @@ ArgDef newArgDef(const char* name, ArgType type, bool optional);
 Arg parseDispatch(char** argv, int argc, size_t pos, const ArgDef* def);
 
 Arg* parse(char** argv, int argc, ArgDef* definitions, size_t size);
+
+Arg* getArg(Arg* args, size_t argsSize, name_t argument);

@@ -148,7 +148,13 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
 
         Arg a = parseDispatch(argv, argc, i, def);
 
-        if (!argAlreadyExists(args, argsP, &a)) args[argsP++] = a;
+        // checking for duplicates
+        if (argAlreadyExists(args, argsP, &a)) {
+            fprintf(stderr, "Found duplicate argument: `%s`", a.name);
+            TERMINATE;
+        }
+
+        args[argsP++] = a;
 
         i += (def->type == BOOLEAN) ? 1 : 2;
     }
@@ -168,4 +174,16 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
     }
 
     return args;
+}
+
+
+// post parsing, given the result
+// pointer `Arg*`, retrieves the desired
+// `Arg` given the name of such argument
+Arg* getArg(Arg* args, size_t argsSize, name_t argument) {
+    for (int i = 0; i < argsSize; ++i) {
+        if (args[i].name == argument) return &args[i];
+    }
+
+    return NULL;
 }
