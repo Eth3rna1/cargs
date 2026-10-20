@@ -29,13 +29,6 @@ int getArgDefWithName(const char* arg, const ArgDef* definitions, size_t size) {
     return -1;
 }
 
-bool intInInts(int n, int* ints, size_t size) {
-    for (int i = 0; i < size; ++i) {
-        if (n == ints[i]) return true;
-    }
-    return false;
-}
-
 bool argAlreadyExists(Arg* args, size_t argsSize, const Arg* arg) {
     for (size_t i = 0; i < argsSize; ++i) {
         if (strcmp(args[i].name, arg->name) == 0) return true;
