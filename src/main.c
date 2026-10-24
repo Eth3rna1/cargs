@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <cargs/cargs.h>
+#include <cargs.h>
 
 int main(int argc, char** argv) {
     const size_t size = 2;

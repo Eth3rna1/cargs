@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <cargs/cargs.h>
+#include <cargs.h>
 
 
 #define TERMINATE exit(EXIT_FAILURE)
