@@ -7,7 +7,8 @@ typedef const char* name_t;
 typedef enum ArgType {
     STRING,
     BOOLEAN,
-    NUMERICAL,
+    INTEGER,
+    FLOAT
 } ArgType;
 
 typedef struct ArgDef {
@@ -19,6 +20,7 @@ typedef struct ArgDef {
 union Variant {
     char* s;
     float f;
+    int i;
     bool b;
 };
 
@@ -44,7 +46,9 @@ Arg parseStringArgDef(char** argv, int argc, const ArgDef* def, size_t pos);
 
 Arg parseBooleanArgDef(char** argv, int argc, const ArgDef* def, size_t pos);
 
-Arg parseNumericalArgDef(char** argv, int argc, const ArgDef* def, size_t pos);
+Arg parseIntegerArgDef(char** argv, int argc, const ArgDef* def, size_t pos);
+
+Arg parseFloatArgDef(char** argv, int argc, const ArgDef* def, size_t pos);
 
 Arg parseDispatch(char** argv, int argc, size_t pos, const ArgDef* def);
 

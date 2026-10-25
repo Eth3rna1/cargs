@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <errno.h>
 #include <stddef.h>
+#include <limits.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -76,25 +78,91 @@ Arg parseBooleanArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
     return a;
 }
 
-Arg parseNumericalArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
-    if (pos + 1 >= argc) {
-        fprintf(stderr, "Please provide a numerical value to: `%s`\n", def->name);
+Arg parseIntegerArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
+    if (pos + 1 >= (size_t)argc) {
+        fprintf(stderr, "Please provide an integer value to: `%s`\n", def->name);
         TERMINATE;
     }
     char* argValue = argv[pos + 1];
     char* end;
 
-    float floatArgValue = strtof(argValue, &end);
+    errno = 0;
+
+    long integerArgValue = strtol(argValue, &end, 10);
+
+    bool isUnderflowed = integerArgValue < INT_MIN;
+    bool isOverflowed = integerArgValue > INT_MAX;
+    bool isOutOfIntRange = isUnderflowed || isOverflowed;
+    bool isRangeError = errno == ERANGE;
+
+    if (isRangeError) {
+        fprintf(stderr, "Failed to parse argument value: `%s`\n\nValue is either too big or too small\n", argValue);
+        TERMINATE;
+    }
+
+    if (argValue == end) {
+        fprintf(stderr, "No valid digits found for parsing: %s\n", argValue);
+        TERMINATE;
+    }
 
     if (*end != '\0') {
-        fprintf(stderr, "Error parsing numerical value: `%s`\n", argValue);
+        fprintf(stderr, "Error parsing integer value: `%s`\n", argValue);
+        TERMINATE;
+    }
+
+    if (isOutOfIntRange) {
+        fprintf(stderr, "Failed to parse argument value: `%s`\n\nValue is either too big or too small\n", argValue);
+        TERMINATE;
+    }
+
+    int intResult = (int)integerArgValue;
+
+    Arg a = {
+        .name = def->name,
+        .value = {
+            .type = INTEGER,
+            .variant.i = intResult 
+        }
+    };
+
+    return a;
+}
+
+Arg parseFloatArgDef(char** argv, int argc, const ArgDef* def, size_t pos) {
+    if (pos + 1 >= argc) {
+        fprintf(stderr, "Please provide a decimal value to: `%s`\n", def->name);
+        TERMINATE;
+    }
+    char* argValue = argv[pos + 1];
+    char* end;
+
+    errno = 0;
+    float floatArgValue = strtof(argValue, &end);
+
+    if (argValue == end) {
+        fprintf(
+            stderr,
+            "No valid decimal number found for %s: `%s`",
+            argv[pos],
+            argValue
+        );
+        TERMINATE;
+    }
+
+    if (*end != '\0') {
+        fprintf(stderr, "Error parsing float value: `%s`\n", argValue);
+        TERMINATE;
+    }
+
+    if (errno == ERANGE) {
+        fprintf(stderr, "Decimal value out of range: `%s`\n", argValue);
         TERMINATE;
     }
 
     Arg a = {
         .name = def->name,
         .value = {
-            .type = NUMERICAL,
+            .type = FLOAT,
             .variant.f = floatArgValue
         }
     };
@@ -107,8 +175,9 @@ Arg parseDispatch(char** argv, int argc, size_t pos, const ArgDef* def) {
 
     switch (def->type) {
         case STRING: a = parseStringArgDef(argv, argc, def, pos); break;
+        case FLOAT: a = parseFloatArgDef(argv, argc, def, pos); break;
+        case INTEGER: a = parseIntegerArgDef(argv, argc, def, pos); break;
         case BOOLEAN: a = parseBooleanArgDef(argv, argc, def, pos); break;
-        case NUMERICAL: a = parseNumericalArgDef(argv, argc, def, pos); break;
     }
 
     return a;
@@ -126,7 +195,7 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
         return NULL;
     }
 
-    while (i < argc) {
+    while (i < (size_t)argc) {
         char* arg = argv[i];
 
         // looking for its definition
@@ -134,7 +203,7 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
 
         if (idx == -1) {
             fprintf(stderr, "Unexpected argument given: `%s`\n", arg);
-            return NULL;
+            goto cleanup;
         }
 
         const ArgDef* def = &definitions[idx];
@@ -144,7 +213,7 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
         // checking for duplicates
         if (argAlreadyExists(args, argsP, &a)) {
             fprintf(stderr, "Found duplicate argument: `%s`", a.name);
-            TERMINATE;
+            goto cleanup;
         }
 
         args[argsP++] = a;
@@ -162,11 +231,15 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
 
         if (mandatory && wasNotUsed) {
             fprintf(stderr, "No argument provided for: `%s`\n", def.name);
-            return NULL;
+            goto cleanup;
         }
     }
 
     return args;
+
+cleanup:
+    free(args);
+    return NULL;
 }
 
 
@@ -175,7 +248,7 @@ Arg* parse(char** argv, int argc, ArgDef* definitions, size_t defsSize) {
 // `Arg` given the name of such argument
 Arg* getArg(Arg* args, size_t argsSize, name_t argument) {
     for (int i = 0; i < argsSize; ++i) {
-        if (args[i].name == argument) return &args[i];
+        if (strcmp(args[i].name, argument) == 0) return &args[i];
     }
 
     return NULL;
